@@ -1,84 +1,144 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { CreditCard, Loader2, ShieldCheck, ArrowLeft, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 
-// Assuming your backend expects title/serviceName and potentially a description
-const bookingSchema = z.object({
-  serviceName: z.string().min(3, { message: "Service name is required" }),
-  description: z.string().min(10, { message: "Please provide more details about the issue" }),
-});
-
-type BookingFormValues = z.infer<typeof bookingSchema>;
-
-export default function BookingPage() {
+export default function PaymentPage() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const params = useParams();
+  const bookingId = params?.id;
 
-  const { register, handleSubmit, formState: { errors } } = useForm<BookingFormValues>({
-    resolver: zodResolver(bookingSchema),
-  });
+  const [booking, setBooking] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const onSubmit = async (data: BookingFormValues) => {
-    setIsSubmitting(true);
+  useEffect(() => {
+    async function loadBookingDetails() {
+      try {
+        const response = await fetchApi(`/bookings/${bookingId}`);
+        setBooking(response.data || response);
+      } catch (error) {
+        setBooking({
+          id: bookingId,
+          serviceName: "Professional Service",
+          price: 50,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (bookingId) {
+      loadBookingDetails();
+    }
+  }, [bookingId]);
+
+  const handleProcessPayment = async () => {
+    setIsProcessing(true);
     try {
-      // POST /api/bookings (Adjust endpoint based on your specific API docs)
-      await fetchApi("/bookings", {
+      console.log("Sending payment creation for bookingId:", bookingId);
+      
+      const response = await fetchApi("/payments/create", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: JSON.stringify({ bookingId }),
       });
 
-      toast.success("Booking request submitted successfully!");
-      router.push("/dashboard/customer"); // Redirect to customer dashboard
+      console.log("Payment response received:", response);
+
+      const gatewayUrl = response.gatewayUrl || response.data?.gatewayUrl;
+
+      if (gatewayUrl) {
+        toast.success("Redirecting to payment gateway...");
+        window.location.href = gatewayUrl;
+      } else {
+        throw new Error("Gateway URL not found in payment response.");
+      }
     } catch (error: any) {
-      console.error("Booking Error:", error);
-      toast.error(error.message || "Failed to submit booking.");
-    } finally {
-      setIsSubmitting(false);
+      console.error("Payment Creation Error:", error);
+      toast.error(error.message || "Failed to create payment session.");
+      setIsProcessing(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-10 flex items-center justify-center">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <CardTitle>Request a Service</CardTitle>
-          <CardDescription>Fill in the details to book a professional</CardDescription>
+    <main className="max-w-xl mx-auto py-12 px-4">
+      <Button 
+        variant="ghost" 
+        className="mb-6 text-slate-600 hover:text-slate-900"
+        onClick={() => router.push("/dashboard/customer")}
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
+      </Button>
+
+      <Card className="shadow-xl border-slate-200">
+        <CardHeader className="bg-slate-50 border-b pb-6">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl font-bold text-slate-900">Secure Checkout</CardTitle>
+            <ShieldCheck className="w-6 h-6 text-blue-600" />
+          </div>
+          <CardDescription>Complete payment via SSLCommerz gateway session.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="serviceName">Service Name</Label>
-              <Input id="serviceName" placeholder="e.g. AC Repair, Plumbing" {...register("serviceName")} />
-              {errors.serviceName && <p className="text-sm text-red-500">{errors.serviceName.message}</p>}
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Details</Label>
-              <textarea
-                id="description"
-                className="flex min-h-[100px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950"
-                placeholder="Describe your issue..."
-                {...register("description")}
-              />
-              {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
+        <CardContent className="space-y-6 pt-6">
+          <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-2">
+            <div className="flex justify-between text-sm text-slate-600">
+              <span>Booking ID:</span>
+              <span className="font-mono text-slate-900">{String(bookingId).slice(0, 8)}...</span>
             </div>
+            <div className="flex justify-between text-sm text-slate-600">
+              <span>Service Name:</span>
+              <span className="font-semibold text-slate-900">{booking?.serviceName || booking?.title || "Professional Service"}</span>
+            </div>
+            <div className="flex justify-between text-base font-bold text-slate-900 border-t pt-2 mt-2">
+              <span>Total Amount:</span>
+              <span className="text-blue-600">${booking?.price || 50}</span>
+            </div>
+          </div>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Book Service"}
-            </Button>
-          </form>
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-slate-900">Payment Provider</label>
+            <div className="flex items-center gap-3 p-3 border rounded-lg bg-blue-50/50 border-blue-200">
+              <CreditCard className="w-5 h-5 text-blue-600" />
+              <div className="text-sm">
+                <p className="font-semibold text-slate-900">SSLCommerz Sandbox</p>
+                <p className="text-slate-500 text-xs">Secure online transaction session</p>
+              </div>
+            </div>
+          </div>
         </CardContent>
+
+        <CardFooter className="pb-6 px-6">
+          <Button 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2" 
+            size="lg"
+            onClick={handleProcessPayment}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Creating Payment Session...
+              </>
+            ) : (
+              <>
+                Proceed to Payment <ExternalLink className="w-4 h-4" />
+              </>
+            )}
+          </Button>
+        </CardFooter>
       </Card>
-    </div>
+    </main>
   );
 }

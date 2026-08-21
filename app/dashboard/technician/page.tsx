@@ -1,169 +1,180 @@
 "use client";
 
-import { useState } from "react";
-import { format } from "date-fns";
-import { Check, X, Play, CheckCircle2, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { fetchApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { BookingStatus } from "@/types";
-
-// Mock data representing backend state
-const initialBookings = [
-  { id: "B-101", customer: "Sarah Smith", service: "Emergency Plumbing", date: "2026-08-25", time: "10:00 AM", status: "REQUESTED" as BookingStatus, price: 80 },
-  { id: "B-102", customer: "John Doe", service: "Pipe Leak Repair", date: "2026-08-26", time: "02:00 PM", status: "PAID" as BookingStatus, price: 65 },
-  { id: "B-103", customer: "Mike Johnson", service: "Water Heater Setup", date: "2026-08-22", time: "09:00 AM", status: "IN_PROGRESS" as BookingStatus, price: 120 },
-];
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Loader2, CheckCircle2, Clock, Wrench } from "lucide-react";
 
 export default function TechnicianDashboard() {
-  const [bookings, setBookings] = useState(initialBookings);
-  const [blockedDates, setBlockedDates] = useState<Date[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  // Optimistic UI Update function
-  const updateBookingStatus = async (id: string, newStatus: BookingStatus) => {
-    // 1. Instantly update the UI (Optimistic Update)
-    setBookings((prev) =>
-      prev.map((booking) => (booking.id === id ? { ...booking, status: newStatus } : booking))
-    );
-    
-    // 2. Simulate API Call
+  // Load technician jobs on mount
+  useEffect(() => {
+    async function loadJobs() {
+      try {
+        let response;
+        try {
+          response = await fetchApi("/technician/jobs");
+        } catch {
+          try {
+            response = await fetchApi("/technician/bookings");
+          } catch {
+            response = await fetchApi("/bookings");
+          }
+        }
+        setJobs(response.data || response || []);
+      } catch (error: any) {
+        console.error("Failed to load technician jobs:", error);
+        setJobs([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadJobs();
+  }, []);
+
+  // Handle status update targeting the verified Postman endpoint
+  const handleUpdateStatus = async (jobId: string, newStatus: string) => {
+    setUpdatingId(jobId);
     try {
-      // TODO: Connect to PATCH /api/technician/bookings/:id
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      toast.success(`Booking ${id} marked as ${newStatus.replace("_", " ")}`);
-    } catch (error) {
-      // 3. Rollback on failure (Optional, but good practice)
-      toast.error("Failed to update status.");
+      // Call the exact correct backend route found in Postman
+      await fetchApi(`/technician/bookings/${jobId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      toast.success(`Job status updated to ${newStatus}`);
+      
+      // Update local state instantly so it persists on refresh
+      setJobs((prev) =>
+        prev.map((job) => (job.id === jobId ? { ...job, status: newStatus } : job))
+      );
+    } catch (error: any) {
+      console.error("Status Update Error:", error);
+      toast.error(error.message || "Failed to update job status.");
+    } finally {
+      setUpdatingId(null);
     }
   };
+const handleBooking = async () => {
+  try {
+    const payload = {
+      serviceId: serviceId,                  // Ensure this is a valid string/ID
+      technicianProfileId: technicianId,     // Ensure this matches your backend DTO field name
+      scheduledAt: new Date().toISOString(), // Ensure date format matches backend expectations
+    };
 
-  // Helper for dynamic badge colors
-  const getStatusColor = (status: BookingStatus) => {
-    switch (status) {
-      case "REQUESTED": return "bg-amber-100 text-amber-800 hover:bg-amber-200";
-      case "ACCEPTED": return "bg-blue-100 text-blue-800 hover:bg-blue-200";
-      case "PAID": return "bg-purple-100 text-purple-800 hover:bg-purple-200";
-      case "IN_PROGRESS": return "bg-emerald-100 text-emerald-800 hover:bg-emerald-200";
-      case "COMPLETED": return "bg-slate-100 text-slate-800 hover:bg-slate-200";
-      case "DECLINED": case "CANCELLED": return "bg-red-100 text-red-800 hover:bg-red-200";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
+    console.log("Submitting booking payload:", payload);
 
+    const response = await fetchApi("/bookings", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    toast.success("Booking created successfully!");
+    router.push("/dashboard/customer");
+  } catch (error: any) {
+    console.error("Booking Error:", error);
+    toast.error(error.message || "Failed to create booking.");
+  }
+};
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Technician Dashboard</h1>
-          <p className="text-slate-500">Manage your jobs, schedule, and earnings.</p>
-        </div>
+    <div className="min-h-screen bg-slate-50 p-6 md:p-10 space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Technician Workspace</h1>
+        <p className="text-slate-500">Manage your assigned service requests and update job progress.</p>
       </div>
 
-      <Tabs defaultValue="bookings" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="bookings">Job Requests</TabsTrigger>
-          <TabsTrigger value="schedule">Availability & Schedule</TabsTrigger>
-        </TabsList>
-        
-        {/* Bookings Tab */}
-        <TabsContent value="bookings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Incoming & Active Jobs</CardTitle>
-              <CardDescription>Review new requests and update job statuses.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Service</TableHead>
-                      <TableHead>Date & Time</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {bookings.map((booking) => (
-                      <TableRow key={booking.id}>
-                        <TableCell className="font-medium">{booking.customer}</TableCell>
-                        <TableCell>{booking.service}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col text-sm text-slate-600">
-                            <span className="flex items-center gap-1"><CalendarIcon className="w-3 h-3"/> {booking.date}</span>
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3"/> {booking.time}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={cn("uppercase text-[10px] font-bold tracking-wider", getStatusColor(booking.status))} variant="outline">
-                            {booking.status.replace("_", " ")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right space-x-2">
-                          {/* Conditional Action Buttons based on Status */}
-                          {booking.status === "REQUESTED" && (
-                            <>
-                              <Button size="sm" variant="outline" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" onClick={() => updateBookingStatus(booking.id, "ACCEPTED")}>
-                                <Check className="w-4 h-4 mr-1" /> Accept
-                              </Button>
-                              <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => updateBookingStatus(booking.id, "DECLINED")}>
-                                <X className="w-4 h-4 mr-1" /> Decline
-                              </Button>
-                            </>
-                          )}
-                          
-                          {booking.status === "PAID" && (
-                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => updateBookingStatus(booking.id, "IN_PROGRESS")}>
-                              <Play className="w-4 h-4 mr-1" /> Start Job
+      <Card>
+        <CardHeader>
+          <CardTitle>Assigned Jobs</CardTitle>
+          <CardDescription>Review and process your pending service appointments</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          ) : jobs.length === 0 ? (
+            <div className="text-center py-16 text-slate-500">
+              <Wrench className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+              <p className="text-lg font-medium">No assigned jobs found.</p>
+              <p className="text-sm">Check back later when customers book your services.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500">
+                    <th className="py-3 px-4 font-medium">Service / Task</th>
+                    <th className="py-3 px-4 font-medium">Description</th>
+                    <th className="py-3 px-4 font-medium">Status</th>
+                    <th className="py-3 px-4 font-medium text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {jobs.map((job: any) => {
+                    const jobTitle = job.serviceName || job.title || (typeof job.service === "object" ? job.service?.title : "Service Request");
+                    const jobDesc = job.description || (typeof job.service === "object" ? job.service?.description : "No description provided.");
+                    const jobStatus = job.status || "PENDING";
+
+                    return (
+                      <tr key={job.id || Math.random()} className="hover:bg-slate-50/50">
+                        <td className="py-4 px-4 font-medium text-slate-900">
+                          {jobTitle}
+                        </td>
+                        <td className="py-4 px-4 text-slate-600 max-w-xs truncate">
+                          {jobDesc}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            jobStatus === "COMPLETED" 
+                              ? "bg-green-100 text-green-800" 
+                              : jobStatus === "IN_PROGRESS" || jobStatus === "ACCEPTED" || jobStatus === "PAID"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}>
+                            <Clock className="w-3 h-3" />
+                            {jobStatus}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-right space-x-2">
+                          {jobStatus !== "ACCEPTED" && jobStatus !== "IN_PROGRESS" && jobStatus !== "COMPLETED" && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleUpdateStatus(job.id, "ACCEPTED")}
+                              disabled={updatingId === job.id}
+                            >
+                              Accept
                             </Button>
                           )}
-
-                          {booking.status === "IN_PROGRESS" && (
-                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => updateBookingStatus(booking.id, "COMPLETED")}>
-                              <CheckCircle2 className="w-4 h-4 mr-1" /> Mark Complete
+                          {jobStatus !== "COMPLETED" && (
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleUpdateStatus(job.id, "COMPLETED")}
+                              disabled={updatingId === job.id}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              <CheckCircle2 className="w-4 h-4 mr-1" />
+                              Complete
                             </Button>
                           )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {bookings.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-slate-500">
-                          No bookings found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Schedule Tab */}
-        <TabsContent value="schedule">
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Availability</CardTitle>
-              <CardDescription>Select dates on the calendar to mark yourself as unavailable (Off Days).</CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center sm:justify-start">
-              <Calendar
-                mode="multiple"
-                selected={blockedDates}
-                onSelect={(dates) => setBlockedDates(dates as Date[])}
-                className="rounded-md border shadow-sm"
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
