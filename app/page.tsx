@@ -4,38 +4,28 @@ import { ArrowRight, Star } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-
-// Mock data to simulate backend response
-const mockServices = [
-  {
-    id: "1",
-    title: "Plumbing Repair",
-    category: "Plumbing",
-    price: "Starts at $50",
-    rating: 4.8,
-    imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    id: "2",
-    title: "Electrical Installation",
-    category: "Electrical",
-    price: "Starts at $80",
-    rating: 4.9,
-    imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    id: "3",
-    title: "AC Servicing",
-    category: "HVAC",
-    price: "Starts at $60",
-    rating: 4.7,
-    imageUrl: "https://images.unsplash.com/photo-1527623512967-0c7f216aeb3f?q=80&w=600&auto=format&fit=crop",
-  },
-];
+import { fetchApi } from "@/lib/api";
 
 export default async function HomePage() {
-  // Simulate a network delay to test our loading.tsx file
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+  let services = [];
+
+  try {
+    // Fetch live categories/services from your backend
+    const response = await fetchApi("/categories"); // Adjust endpoint based on your backend route
+    services = response.data || response || [];
+  } catch (error) {
+    console.error("Failed to fetch services on homepage:", error);
+    // Fallback array if backend is unreachable
+    services = [
+      {
+        id: "1",
+        name: "General Maintenance",
+        price: "Starts at $50",
+        rating: 4.8,
+        imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?q=80&w=600&auto=format&fit=crop",
+      }
+    ];
+  }
 
   return (
     <main className="flex-1">
@@ -75,31 +65,31 @@ export default async function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockServices.map((service) => (
-            <Card key={service.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+          {services.map((service: any, index: number) => (
+            <Card key={service.id || index} className="overflow-hidden hover:shadow-lg transition-shadow">
               <div className="relative h-48 w-full bg-slate-100">
                 <Image
-                  src={service.imageUrl}
-                  alt={service.title}
+                  src={service.imageUrl || "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?q=80&w=600&auto=format&fit=crop"}
+                  alt={service.name || service.title || "Service"}
                   fill
                   className="object-cover"
                   sizes="(max-w-768px) 100vw, (max-w-1200px) 50vw, 33vw"
-                  priority={service.id === "1"}
+                  priority={index === 0}
                 />
               </div>
               <CardContent className="p-4">
                 <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">
-                  {service.category}
+                  {service.category || "Professional Service"}
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-1">{service.title}</h3>
+                <h3 className="text-lg font-bold text-slate-900 mb-1">{service.name || service.title}</h3>
                 <div className="flex items-center gap-1 text-sm text-slate-600 mb-3">
                   <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <span className="font-medium text-slate-900">{service.rating}</span>
+                  <span className="font-medium text-slate-900">{service.rating || "4.8"}</span>
                   <span>(120+ reviews)</span>
                 </div>
               </CardContent>
               <CardFooter className="p-4 border-t bg-slate-50 flex justify-between items-center">
-                <span className="font-semibold text-slate-900">{service.price}</span>
+                <span className="font-semibold text-slate-900">{service.price || "Starts at $50"}</span>
                 <Link href={`/services`} className={buttonVariants({ size: "sm" })}>
                   Book Now
                 </Link>

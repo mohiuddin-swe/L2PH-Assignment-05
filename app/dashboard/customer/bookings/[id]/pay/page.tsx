@@ -1,104 +1,83 @@
 "use client";
 
-import { useState, use } from "react";
-import { useRouter } from "next/navigation";
-import { CreditCard, ShieldCheck, ArrowLeft, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { fetchApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-export default function PaymentInitiationPage({ params }: { params: Promise<{ id: string }> }) {
+// Assuming your backend expects title/serviceName and potentially a description
+const bookingSchema = z.object({
+  serviceName: z.string().min(3, { message: "Service name is required" }),
+  description: z.string().min(10, { message: "Please provide more details about the issue" }),
+});
+
+type BookingFormValues = z.infer<typeof bookingSchema>;
+
+export default function BookingPage() {
   const router = useRouter();
-  const resolvedParams = use(params);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock data representing the specific booking fetched from the backend
-  const bookingSummary = {
-    id: resolvedParams.id,
-    service: "Pipe Leak Repair",
-    technician: "Alex Johnson",
-    price: 65,
-    date: "2026-08-26",
-  };
+  const { register, handleSubmit, formState: { errors } } = useForm<BookingFormValues>({
+    resolver: zodResolver(bookingSchema),
+  });
 
-  const handleCheckout = async () => {
-    setIsProcessing(true);
-    toast.loading("Initiating secure checkout...");
-
+  const onSubmit = async (data: BookingFormValues) => {
+    setIsSubmitting(true);
     try {
-      // TODO: Connect to POST /api/payments/create
-      // The backend should return a JSON response containing { url: "https://checkout.stripe.com/..." }
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate API delay
-      
-      toast.dismiss();
-      
-      // For demonstration purposes, we will simulate the redirect by pushing directly to our success page.
-      // In production, you MUST do: window.location.href = data.url; (The Stripe/SSLCommerz URL)
-      router.push("/payment/success?session_id=mock_session_123");
-      
-    } catch (error) {
-      toast.dismiss();
-      toast.error("Failed to initiate payment gateway. Please try again.");
-      setIsProcessing(false);
+      // POST /api/bookings (Adjust endpoint based on your specific API docs)
+      await fetchApi("/bookings", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+
+      toast.success("Booking request submitted successfully!");
+      router.push("/dashboard/customer"); // Redirect to customer dashboard
+    } catch (error: any) {
+      console.error("Booking Error:", error);
+      toast.error(error.message || "Failed to submit booking.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg shadow-lg">
-        <CardHeader className="text-center pb-8 border-b">
-          <CardTitle className="text-2xl font-bold">Secure Checkout</CardTitle>
-          <CardDescription>Complete your payment to confirm the booking.</CardDescription>
+    <div className="min-h-screen bg-slate-50 p-6 md:p-10 flex items-center justify-center">
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>Request a Service</CardTitle>
+          <CardDescription>Fill in the details to book a professional</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6 pt-6">
-          
-          <div className="bg-slate-50 p-4 rounded-lg border space-y-3 text-sm">
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-slate-500">Booking ID</span>
-              <span className="font-medium text-slate-900">{bookingSummary.id}</span>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="serviceName">Service Name</Label>
+              <Input id="serviceName" placeholder="e.g. AC Repair, Plumbing" {...register("serviceName")} />
+              {errors.serviceName && <p className="text-sm text-red-500">{errors.serviceName.message}</p>}
             </div>
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-slate-500">Service</span>
-              <span className="font-medium text-slate-900">{bookingSummary.service}</span>
-            </div>
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-slate-500">Technician</span>
-              <span className="font-medium text-slate-900">{bookingSummary.technician}</span>
-            </div>
-            <div className="flex justify-between text-base font-bold pt-2">
-              <span className="text-slate-900">Total Amount</span>
-              <span className="text-blue-600">${bookingSummary.price.toFixed(2)}</span>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 p-3 rounded-md">
-            <ShieldCheck className="w-5 h-5 shrink-0" />
-            <p>Payments are 100% secure and encrypted. We do not store your card details.</p>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Details</Label>
+              <textarea
+                id="description"
+                className="flex min-h-[100px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950"
+                placeholder="Describe your issue..."
+                {...register("description")}
+              />
+              {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
+            </div>
 
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Submitting..." : "Book Service"}
+            </Button>
+          </form>
         </CardContent>
-        <CardFooter className="flex-col gap-3">
-          <Button 
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-lg" 
-            onClick={handleCheckout}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            ) : (
-              <CreditCard className="w-5 h-5 mr-2" />
-            )}
-            {isProcessing ? "Processing..." : `Pay $${bookingSummary.price.toFixed(2)}`}
-          </Button>
-          <Button 
-            variant="ghost" 
-            className="w-full text-slate-500"
-            onClick={() => router.back()}
-            disabled={isProcessing}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" /> Cancel & Go Back
-          </Button>
-        </CardFooter>
       </Card>
     </div>
   );

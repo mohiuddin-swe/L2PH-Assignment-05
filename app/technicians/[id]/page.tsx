@@ -48,7 +48,6 @@ export default function TechnicianProfilePage() {
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API delay
       
       toast.success("Booking request sent successfully!");
-      // Redirect the user to their dashboard to track the booking status
       router.push("/dashboard/customer");
     } catch (error) {
       console.error("Booking Error:", error);
@@ -64,7 +63,6 @@ export default function TechnicianProfilePage() {
         
         {/* Left Column: Profile Details */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Header Profile Section */}
           <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
             <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white shadow-lg shrink-0">
               <Image 
@@ -94,7 +92,6 @@ export default function TechnicianProfilePage() {
             </div>
           </div>
 
-          {/* About & Skills */}
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-slate-900 border-b pb-2">About the Technician</h2>
             <p className="text-slate-600 leading-relaxed">{mockTechnician.bio}</p>
@@ -125,21 +122,21 @@ export default function TechnicianProfilePage() {
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
               
-              {/* Date Picker */}
+              {/* Date Picker - Fixed by using a standard element wrapper instead of nested button */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-900">Select Date</label>
                 <Popover>
-                  <PopoverTrigger asChild>
-                    <button
+                  <PopoverTrigger className="w-full text-left">
+                    <div
                       className={cn(
                         buttonVariants({ variant: "outline" }),
-                        "w-full justify-start text-left font-normal",
+                        "w-full justify-start text-left font-normal cursor-pointer flex items-center",
                         !date && "text-muted-foreground"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {date ? format(date, "PPP") : <span>Pick a date</span>}
-                    </button>
+                    </div>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
@@ -167,7 +164,7 @@ export default function TechnicianProfilePage() {
                         selectedSlot === slot ? "bg-blue-600 text-white hover:bg-blue-700" : ""
                       )}
                       onClick={() => setSelectedSlot(slot)}
-                      disabled={!date} // Disable time slots until a date is picked
+                      disabled={!date}
                     >
                       <Clock className="w-3 h-3 mr-2" />
                       {slot}
