@@ -5,38 +5,48 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { fetchApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserRole } from "@/types";
 
+// Validation schema
 const registerSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   email: z.string().email({ message: "Invalid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  role: z.enum(["CUSTOMER", "TECHNICIAN"] as const, {
-    required_error: "Please select a user role",
+  role: z.enum(["CUSTOMER", "TECHNICIAN"], {
+    errorMap: () => ({ message: "Please select an account type" }),
   }),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<RegisterFormValues>({
+  
+  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
   });
 
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
     try {
-      // TODO: Connect to your actual POST /api/auth/register endpoint
-      console.log("Register Payload:", data);
-      toast.success("Account created successfully!");
-    } catch (error) {
-      toast.error("Failed to create account.");
+      // POST to /api/auth/register via the proxy
+      await fetchApi("/auth/register", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+
+      toast.success("Account created successfully! Please log in.");
+      router.push("/auth/login");
+    } catch (error: any) {
+      console.error("Registration Error:", error);
+      toast.error(error.message || "Failed to create account.");
     } finally {
       setIsLoading(false);
     }
@@ -46,17 +56,18 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Create an account</CardTitle>
-          <CardDescription>Join FixItNow to book or provide services</CardDescription>
+          <CardTitle className="text-2xl">Create an Account</CardTitle>
+          <CardDescription>Join our platform to manage your services</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input id="name" placeholder="John Doe" {...register("name")} />
               {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="name@example.com" {...register("email")} />
@@ -70,25 +81,26 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>I want to...</Label>
+              <Label htmlFor="role">Account Type</Label>
               <select 
-                className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-950"
-                onChange={(e) => setValue("role", e.target.value as "CUSTOMER" | "TECHNICIAN")}
-                defaultValue=""
+                id="role" 
+                className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
+                {...register("role")}
               >
-                <option value="" disabled>Select an option</option>
-                <option value="CUSTOMER">Hire a Technician (Customer)</option>
-                <option value="TECHNICIAN">Offer my Services (Technician)</option>
+                <option value="">Select an account type...</option>
+                <option value="CUSTOMER">Customer</option>
+                <option value="TECHNICIAN">Technician</option>
               </select>
               {errors.role && <p className="text-sm text-red-500">{errors.role.message}</p>}
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating account..." : "Register"}
+              {isLoading ? "Creating account..." : "Sign Up"}
             </Button>
           </form>
+          
           <div className="mt-4 text-center text-sm">
-            Already have an account? <Link href="/auth/login" className="text-blue-600 hover:underline">Sign in</Link>
+            Already have an account? <Link href="/auth/login" className="text-blue-600 hover:underline">Log in</Link>
           </div>
         </CardContent>
       </Card>
