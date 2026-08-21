@@ -1,36 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Search, Star, SlidersHorizontal } from "lucide-react";
+import { Search, Star, SlidersHorizontal, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-
-// Expanded mock data to demonstrate filtering
-const mockServices = [
-  { id: "1", title: "Emergency Plumbing Repair", category: "Plumbing", price: 50, rating: 4.8, reviews: 124, imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?q=80&w=600&auto=format&fit=crop" },
-  { id: "2", title: "Electrical Wiring & Setup", category: "Electrical", price: 80, rating: 4.9, reviews: 89, imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=600&auto=format&fit=crop" },
-  { id: "3", title: "Full AC Servicing", category: "HVAC", price: 60, rating: 4.7, reviews: 210, imageUrl: "https://images.unsplash.com/photo-1527623512967-0c7f216aeb3f?q=80&w=600&auto=format&fit=crop" },
-  { id: "4", title: "Deep Home Cleaning", category: "Cleaning", price: 120, rating: 4.9, reviews: 340, imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=600&auto=format&fit=crop" },
-  { id: "5", title: "Leaky Faucet Fix", category: "Plumbing", price: 30, rating: 4.5, reviews: 45, imageUrl: "https://images.unsplash.com/photo-1607472586893-edb57cb89f5c?q=80&w=600&auto=format&fit=crop" },
-  { id: "6", title: "Ceiling Fan Installation", category: "Electrical", price: 45, rating: 4.6, reviews: 67, imageUrl: "https://images.unsplash.com/photo-1565507519179-c5c7d0bf183c?q=80&w=600&auto=format&fit=crop" },
-];
+import { fetchApi } from "@/lib/api";
+import { toast } from "sonner";
 
 const categories = ["Plumbing", "Electrical", "HVAC", "Cleaning"];
 
 export default function ServicesPage() {
+  const [services, setServices] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
+  // Fetch live services from backend on load
+  useEffect(() => {
+    async function loadServices() {
+      try {
+        const response = await fetchApi("/services");
+        setServices(response.data || response || []);
+      } catch (error: any) {
+        console.error("Failed to load services:", error);
+        toast.error("Failed to fetch live services. Showing empty state.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadServices();
+  }, []);
+
+  // Helper to extract category name safely whether it's a string or an object
+  const getCategoryName = (category: any) => {
+    if (!category) return "General";
+    if (typeof category === "string") return category;
+    return category.name || "General";
+  };
+
   // Real-time filtering logic
-  const filteredServices = mockServices.filter((service) => {
-    const matchesSearch = service.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(service.category);
+  const filteredServices = services.filter((service) => {
+    const title = service.title || service.name || "";
+    const categoryName = getCategoryName(service.category);
+    
+    const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(categoryName);
     return matchesSearch && matchesCategory;
   });
 
@@ -82,7 +103,7 @@ export default function ServicesPage() {
                     />
                     <label
                       htmlFor={category}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-600"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-600 cursor-pointer"
                     >
                       {category}
                     </label>
@@ -98,11 +119,17 @@ export default function ServicesPage() {
           <div className="mb-6 flex justify-between items-end">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900">Available Services</h1>
-              <p className="text-slate-500 mt-1">Showing {filteredServices.length} results</p>
+              <p className="text-slate-500 mt-1">
+                {isLoading ? "Loading..." : `Showing ${filteredServices.length} results`}
+              </p>
             </div>
           </div>
 
-          {filteredServices.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center py-32">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          ) : filteredServices.length === 0 ? (
             <div className="text-center py-20 bg-slate-50 rounded-lg border border-dashed">
               <p className="text-slate-500 text-lg">No services found matching your criteria.</p>
               <button 
@@ -115,11 +142,11 @@ export default function ServicesPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredServices.map((service) => (
-                <Card key={service.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+                <Card key={service.id || Math.random()} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
                   <div className="relative h-48 w-full bg-slate-100 shrink-0">
                     <Image
-                      src={service.imageUrl}
-                      alt={service.title}
+                      src={service.imageUrl || "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?q=80&w=600&auto=format&fit=crop"}
+                      alt={service.title || service.name || "Service"}
                       fill
                       className="object-cover"
                       sizes="(max-w-768px) 100vw, (max-w-1200px) 50vw, 33vw"
@@ -127,17 +154,21 @@ export default function ServicesPage() {
                   </div>
                   <CardContent className="p-4 flex-1">
                     <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">
-                      {service.category}
+                      {getCategoryName(service.category)}
                     </div>
-                    <h3 className="text-lg font-bold text-slate-900 mb-1 line-clamp-2">{service.title}</h3>
+                    <h3 className="text-lg font-bold text-slate-900 mb-1 line-clamp-2">
+                      {service.title || service.name}
+                    </h3>
                     <div className="flex items-center gap-1 text-sm text-slate-600 mb-3">
                       <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                      <span className="font-medium text-slate-900">{service.rating}</span>
-                      <span>({service.reviews} reviews)</span>
+                      <span className="font-medium text-slate-900">{service.rating || "4.8"}</span>
+                      <span>({service.reviews || "120"} reviews)</span>
                     </div>
                   </CardContent>
                   <CardFooter className="p-4 border-t bg-slate-50 flex justify-between items-center shrink-0">
-                    <span className="font-semibold text-slate-900">Starts at ${service.price}</span>
+                    <span className="font-semibold text-slate-900">
+                      Starts at ${service.price || "50"}
+                    </span>
                     <Link href={`/technicians/${service.id}`} className={buttonVariants({ size: "sm" })}>
                       View Details
                     </Link>
