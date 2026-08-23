@@ -10,41 +10,48 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { User, Booking } from "@/types";
 
-// Validation schema for category creation
 const categorySchema = z.object({
   name: z.string().min(2, { message: "Category name must be at least 2 characters" }),
 });
-
 type CategoryFormValues = z.infer<typeof categorySchema>;
 
+const statusColor: Record<string, string> = {
+  REQUESTED: "bg-yellow-100 text-yellow-800",
+  ACCEPTED: "bg-blue-100 text-blue-800",
+  DECLINED: "bg-red-100 text-red-800",
+  PAID: "bg-purple-100 text-purple-800",
+  IN_PROGRESS: "bg-green-100 text-green-800",
+  COMPLETED: "bg-gray-200 text-gray-800",
+  CANCELLED: "bg-red-200 text-red-900",
+};
+
 export default function AdminDashboard() {
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [banningId, setBanningId] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
   });
 
-  // Fetch all bookings on load (GET /api/admin/bookings)
   useEffect(() => {
-    async function loadBookings() {
-      try {
-        const response = await fetchApi("/admin/bookings");
-        setBookings(response.data || response);
-      } catch (error: any) {
-        console.error("Failed to load bookings:", error);
-        toast.error(error.message || "Could not fetch bookings.");
-      } finally {
-        setIsLoadingBookings(false);
-      }
-    }
+    fetchApi("/admin/bookings")
+      .then((res) => setBookings(res.data))
+      .catch((err) => toast.error(err.message || "Could not fetch bookings."))
+      .finally(() => setIsLoadingBookings(false));
 
-    loadBookings();
+    fetchApi("/admin/users")
+      .then((res) => setUsers(res.data))
+      .catch((err) => toast.error(err.message || "Could not fetch users."))
+      .finally(() => setIsLoadingUsers(false));
   }, []);
 
-  // Handle category creation (POST /api/admin/categories)
   const onCreateCategory = async (data: CategoryFormValues) => {
     setIsSubmitting(true);
     try {
@@ -52,14 +59,31 @@ export default function AdminDashboard() {
         method: "POST",
         body: JSON.stringify(data),
       });
-
       toast.success("Category created successfully!");
-      reset(); 
+      reset();
     } catch (error: any) {
-      console.error("Category Creation Error:", error);
       toast.error(error.message || "Failed to create category.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const toggleBan = async (user: User) => {
+    const newStatus = user.status === "BANNED" ? "ACTIVE" : "BANNED";
+    setBanningId(user.id);
+    try {
+      await fetchApi(`/admin/users/${user.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u))
+      );
+      toast.success(`User ${newStatus === "BANNED" ? "banned" : "unbanned"}`);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update user status");
+    } finally {
+      setBanningId(null);
     }
   };
 
@@ -67,11 +91,11 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-50 p-6 md:p-10 space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900">Admin Command Center</h1>
-        <p className="text-slate-500">Manage categories and review platform-wide bookings.</p>
+        <p className="text-slate-500">Manage users, categories, and platform-wide bookings.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Create Category Section */}
+        {/* Create Category */}
         <Card className="md:col-span-1 h-fit">
           <CardHeader>
             <CardTitle>Create Category</CardTitle>
@@ -81,14 +105,9 @@ export default function AdminDashboard() {
             <form onSubmit={handleSubmit(onCreateCategory)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Category Name</Label>
-                <Input 
-                  id="name" 
-                  placeholder="e.g. Software Engineering" 
-                  {...register("name")} 
-                />
+                <Input id="name" placeholder="e.g. Electrical" {...register("name")} />
                 {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
               </div>
-
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? "Creating..." : "Add Category"}
               </Button>
@@ -96,11 +115,11 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Bookings Table Section */}
+        {/* All Bookings */}
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>All Platform Bookings</CardTitle>
-            <CardDescription>Review all service bookings requested across the platform</CardDescription>
+            <CardDescription>Every booking across all customers and technicians</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoadingBookings ? (
@@ -112,24 +131,28 @@ export default function AdminDashboard() {
                 <table className="w-full text-left text-sm border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 text-slate-500">
-                      <th className="py-3 px-4 font-medium">ID</th>
                       <th className="py-3 px-4 font-medium">Service</th>
+                      <th className="py-3 px-4 font-medium">Customer</th>
+                      <th className="py-3 px-4 font-medium">Technician</th>
                       <th className="py-3 px-4 font-medium">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {bookings.map((booking: any) => (
-                      <tr key={booking.id || Math.random()} className="hover:bg-slate-50/50">
-                        <td className="py-3 px-4 font-mono text-xs text-slate-600">
-                          {booking.id ? booking.id.slice(0, 8) + "..." : "N/A"}
-                        </td>
+                    {bookings.map((booking) => (
+                      <tr key={booking.id} className="hover:bg-slate-50/50">
                         <td className="py-3 px-4 text-slate-900 font-medium">
-                          {booking.serviceName || booking.title || "General Service"}
+                          {booking.service?.title ?? "N/A"}
+                        </td>
+                        <td className="py-3 px-4 text-slate-600">
+                          {booking.customer?.name ?? "N/A"}
+                        </td>
+                        <td className="py-3 px-4 text-slate-600">
+                          {booking.technicianProfile?.user?.name ?? "N/A"}
                         </td>
                         <td className="py-3 px-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {booking.status || "PENDING"}
-                          </span>
+                          <Badge className={statusColor[booking.status] ?? ""} variant="secondary">
+                            {booking.status}
+                          </Badge>
                         </td>
                       </tr>
                     ))}
@@ -140,6 +163,65 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* User Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle>User Management</CardTitle>
+          <CardDescription>View all users and manage their access</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingUsers ? (
+            <p className="text-sm text-slate-500 py-8 text-center">Loading users...</p>
+          ) : users.length === 0 ? (
+            <p className="text-sm text-slate-500 py-8 text-center">No users found.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500">
+                    <th className="py-3 px-4 font-medium">Name</th>
+                    <th className="py-3 px-4 font-medium">Email</th>
+                    <th className="py-3 px-4 font-medium">Role</th>
+                    <th className="py-3 px-4 font-medium">Status</th>
+                    <th className="py-3 px-4 font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-slate-50/50">
+                      <td className="py-3 px-4 font-medium text-slate-900">{user.name}</td>
+                      <td className="py-3 px-4 text-slate-600">{user.email}</td>
+                      <td className="py-3 px-4">
+                        <Badge variant="outline">{user.role}</Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge variant={user.status === "BANNED" ? "destructive" : "secondary"}>
+                          {user.status}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        {user.role !== "ADMIN" && (
+                          <Button
+                            size="sm"
+                            variant={user.status === "BANNED" ? "outline" : "destructive"}
+                            disabled={banningId === user.id}
+                            onClick={() => toggleBan(user)}
+                          >
+                            {banningId === user.id
+                              ? "..."
+                              : user.status === "BANNED" ? "Unban" : "Ban"}
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -33,11 +33,11 @@ export default function CustomerDashboard() {
     loadBookings();
   }, []);
 
-  const handleCancelBooking = async (id: string) => {
+ const handleCancelBooking = async (id: string) => {
     try {
-      await fetchApi(`/bookings/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: "CANCELLED" }),
+      // Try the standard cancel endpoint or patch route your backend uses
+      await fetchApi(`/bookings/${id}/cancel`, {
+        method: "PATCH", // or "POST" depending on your backend
       });
 
       // Optimistic UI Update

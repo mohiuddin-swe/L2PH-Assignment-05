@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Wrench, User, LogOut, LogIn, Menu, X, Shield, Calendar } from "lucide-react";
+import { Wrench, User, LogOut, LogIn, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 
@@ -88,7 +88,7 @@ export function Header() {
               <Button variant="ghost" size="sm" onClick={() => router.push("/auth/login")}>
                 <LogIn className="w-4 h-4 mr-1" /> Login
               </Button>
-              <Button size="sm" onClick={() => router.push("/register")} className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button size="sm" onClick={() => router.push("/auth/register")} className="bg-blue-600 hover:bg-blue-700 text-white">
                 Register
               </Button>
             </>
@@ -139,10 +139,10 @@ export function Header() {
             </>
           ) : (
             <div className="pt-2 border-t flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => { router.push("auth/login"); setMobileMenuOpen(false); }} className="w-full">
+              <Button variant="outline" size="sm" onClick={() => { router.push("/auth/login"); setMobileMenuOpen(false); }} className="w-full">
                 Login
               </Button>
-              <Button size="sm" onClick={() => { router.push("auth/register"); setMobileMenuOpen(false); }} className="w-full bg-blue-600 text-white">
+              <Button size="sm" onClick={() => { router.push("/auth/register"); setMobileMenuOpen(false); }} className="w-full bg-blue-600 text-white">
                 Register
               </Button>
             </div>

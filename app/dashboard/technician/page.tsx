@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { fetchApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, CheckCircle2, Clock, Wrench } from "lucide-react";
+import { Loader2, CheckCircle2, Clock, Wrench, PlayCircle } from "lucide-react";
 
 export default function TechnicianDashboard() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -42,7 +42,6 @@ export default function TechnicianDashboard() {
   const handleUpdateStatus = async (jobId: string, newStatus: string) => {
     setUpdatingId(jobId);
     try {
-      // Call the exact correct backend route found in Postman
       await fetchApi(`/technician/bookings/${jobId}`, {
         method: "PATCH",
         body: JSON.stringify({ status: newStatus }),
@@ -61,28 +60,7 @@ export default function TechnicianDashboard() {
       setUpdatingId(null);
     }
   };
-const handleBooking = async () => {
-  try {
-    const payload = {
-      serviceId: serviceId,                  // Ensure this is a valid string/ID
-      technicianProfileId: technicianId,     // Ensure this matches your backend DTO field name
-      scheduledAt: new Date().toISOString(), // Ensure date format matches backend expectations
-    };
 
-    console.log("Submitting booking payload:", payload);
-
-    const response = await fetchApi("/bookings", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-
-    toast.success("Booking created successfully!");
-    router.push("/dashboard/customer");
-  } catch (error: any) {
-    console.error("Booking Error:", error);
-    toast.error(error.message || "Failed to create booking.");
-  }
-};
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-10 space-y-8">
       <div>
@@ -144,7 +122,7 @@ const handleBooking = async () => {
                           </span>
                         </td>
                         <td className="py-4 px-4 text-right space-x-2">
-                          {jobStatus !== "ACCEPTED" && jobStatus !== "IN_PROGRESS" && jobStatus !== "COMPLETED" && (
+                          {jobStatus === "REQUESTED" && (
                             <Button 
                               size="sm" 
                               variant="outline"
@@ -154,15 +132,27 @@ const handleBooking = async () => {
                               Accept
                             </Button>
                           )}
-                          {jobStatus !== "COMPLETED" && (
+
+                          {(jobStatus === "ACCEPTED" || jobStatus === "PAID") && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleUpdateStatus(job.id, "IN_PROGRESS")}
+                              disabled={updatingId === job.id}
+                              className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                            >
+                              <PlayCircle className="w-4 h-4 mr-1" /> Start Job
+                            </Button>
+                          )}
+
+                          {jobStatus === "IN_PROGRESS" && (
                             <Button 
                               size="sm" 
                               onClick={() => handleUpdateStatus(job.id, "COMPLETED")}
                               disabled={updatingId === job.id}
                               className="bg-blue-600 hover:bg-blue-700 text-white"
                             >
-                              <CheckCircle2 className="w-4 h-4 mr-1" />
-                              Complete
+                              <CheckCircle2 className="w-4 h-4 mr-1" /> Complete
                             </Button>
                           )}
                         </td>

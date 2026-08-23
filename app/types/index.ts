@@ -14,8 +14,8 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  status: "ACTIVE" | "BANNED";
   avatarUrl?: string;
-  isBanned?: boolean;
 }
 
 export interface ServiceCategory {
