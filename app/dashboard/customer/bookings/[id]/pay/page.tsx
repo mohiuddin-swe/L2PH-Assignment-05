@@ -7,51 +7,34 @@ import { toast } from "sonner";
 import { fetchApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Booking } from "@/types";
 
 export default function PaymentPage() {
   const router = useRouter();
   const params = useParams();
-  const bookingId = params?.id;
+  const bookingId = params?.id as string;
 
-  const [booking, setBooking] = useState<any>(null);
+  const [booking, setBooking] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
-    async function loadBookingDetails() {
-      try {
-        const response = await fetchApi(`/bookings/${bookingId}`);
-        setBooking(response.data || response);
-      } catch (error) {
-        setBooking({
-          id: bookingId,
-          serviceName: "Professional Service",
-          price: 50,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    if (bookingId) {
-      loadBookingDetails();
-    }
+    if (!bookingId) return;
+    fetchApi(`/bookings/${bookingId}`)
+      .then((res) => setBooking(res.data))
+      .catch((err) => toast.error(err.message || "Could not load booking details."))
+      .finally(() => setIsLoading(false));
   }, [bookingId]);
 
   const handleProcessPayment = async () => {
     setIsProcessing(true);
     try {
-      console.log("Sending payment creation for bookingId:", bookingId);
-      
       const response = await fetchApi("/payments/create", {
         method: "POST",
         body: JSON.stringify({ bookingId }),
       });
 
-      console.log("Payment response received:", response);
-
-      const gatewayUrl = response.gatewayUrl || response.data?.gatewayUrl;
-
+      const gatewayUrl = response.data?.gatewayUrl;
       if (gatewayUrl) {
         toast.success("Redirecting to payment gateway...");
         window.location.href = gatewayUrl;
@@ -59,7 +42,6 @@ export default function PaymentPage() {
         throw new Error("Gateway URL not found in payment response.");
       }
     } catch (error: any) {
-      console.error("Payment Creation Error:", error);
       toast.error(error.message || "Failed to create payment session.");
       setIsProcessing(false);
     }
@@ -75,11 +57,7 @@ export default function PaymentPage() {
 
   return (
     <main className="max-w-xl mx-auto py-12 px-4">
-      <Button 
-        variant="ghost" 
-        className="mb-6 text-slate-600 hover:text-slate-900"
-        onClick={() => router.push("/dashboard/customer")}
-      >
+      <Button variant="ghost" className="mb-6 text-slate-600 hover:text-slate-900" onClick={() => router.push("/dashboard/customer")}>
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
       </Button>
 
@@ -96,15 +74,15 @@ export default function PaymentPage() {
           <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-2">
             <div className="flex justify-between text-sm text-slate-600">
               <span>Booking ID:</span>
-              <span className="font-mono text-slate-900">{String(bookingId).slice(0, 8)}...</span>
+              <span className="font-mono text-slate-900">{bookingId.slice(0, 8)}...</span>
             </div>
             <div className="flex justify-between text-sm text-slate-600">
               <span>Service Name:</span>
-              <span className="font-semibold text-slate-900">{booking?.serviceName || booking?.title || "Professional Service"}</span>
+              <span className="font-semibold text-slate-900">{booking?.service?.title ?? "Service"}</span>
             </div>
             <div className="flex justify-between text-base font-bold text-slate-900 border-t pt-2 mt-2">
               <span>Total Amount:</span>
-              <span className="text-blue-600">${booking?.price || 50}</span>
+              <span className="text-blue-600">৳{booking?.service?.price ?? "-"}</span>
             </div>
           </div>
 
@@ -121,21 +99,8 @@ export default function PaymentPage() {
         </CardContent>
 
         <CardFooter className="pb-6 px-6">
-          <Button 
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2" 
-            size="lg"
-            onClick={handleProcessPayment}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Creating Payment Session...
-              </>
-            ) : (
-              <>
-                Proceed to Payment <ExternalLink className="w-4 h-4" />
-              </>
-            )}
+          <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2" size="lg" onClick={handleProcessPayment} disabled={isProcessing}>
+            {isProcessing ? (<><Loader2 className="w-4 h-4 animate-spin" /> Creating Payment Session...</>) : (<>Proceed to Payment <ExternalLink className="w-4 h-4" /></>)}
           </Button>
         </CardFooter>
       </Card>

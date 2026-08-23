@@ -5,40 +5,35 @@ import { toast } from "sonner";
 import { fetchApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, CheckCircle2, Clock, Wrench, PlayCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, CheckCircle2, Clock, Wrench, PlayCircle, XCircle } from "lucide-react";
+import { Booking } from "@/types";
+
+const statusColor: Record<string, string> = {
+  REQUESTED: "bg-amber-100 text-amber-800",
+  ACCEPTED: "bg-blue-100 text-blue-800",
+  DECLINED: "bg-red-100 text-red-800",
+  PAID: "bg-purple-100 text-purple-800",
+  IN_PROGRESS: "bg-green-100 text-green-800",
+  COMPLETED: "bg-gray-200 text-gray-800",
+  CANCELLED: "bg-red-200 text-red-900",
+};
 
 export default function TechnicianDashboard() {
-  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  // Load technician jobs on mount
   useEffect(() => {
-    async function loadJobs() {
-      try {
-        let response;
-        try {
-          response = await fetchApi("/technician/jobs");
-        } catch {
-          try {
-            response = await fetchApi("/technician/bookings");
-          } catch {
-            response = await fetchApi("/bookings");
-          }
-        }
-        setJobs(response.data || response || []);
-      } catch (error: any) {
-        console.error("Failed to load technician jobs:", error);
-        setJobs([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadJobs();
+    fetchApi("/technician/bookings")
+      .then((res) => setJobs(res.data))
+      .catch((err) => {
+        console.error("Failed to load technician jobs:", err);
+        toast.error(err.message || "Could not load jobs.");
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
-  // Handle status update targeting the verified Postman endpoint
   const handleUpdateStatus = async (jobId: string, newStatus: string) => {
     setUpdatingId(jobId);
     try {
@@ -46,15 +41,11 @@ export default function TechnicianDashboard() {
         method: "PATCH",
         body: JSON.stringify({ status: newStatus }),
       });
-
       toast.success(`Job status updated to ${newStatus}`);
-      
-      // Update local state instantly so it persists on refresh
       setJobs((prev) =>
-        prev.map((job) => (job.id === jobId ? { ...job, status: newStatus } : job))
+        prev.map((job) => (job.id === jobId ? { ...job, status: newStatus as Booking["status"] } : job))
       );
     } catch (error: any) {
-      console.error("Status Update Error:", error);
       toast.error(error.message || "Failed to update job status.");
     } finally {
       setUpdatingId(null);
@@ -89,76 +80,80 @@ export default function TechnicianDashboard() {
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
-                    <th className="py-3 px-4 font-medium">Service / Task</th>
-                    <th className="py-3 px-4 font-medium">Description</th>
+                    <th className="py-3 px-4 font-medium">Service</th>
+                    <th className="py-3 px-4 font-medium">Customer</th>
                     <th className="py-3 px-4 font-medium">Status</th>
                     <th className="py-3 px-4 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {jobs.map((job: any) => {
-                    const jobTitle = job.serviceName || job.title || (typeof job.service === "object" ? job.service?.title : "Service Request");
-                    const jobDesc = job.description || (typeof job.service === "object" ? job.service?.description : "No description provided.");
-                    const jobStatus = job.status || "PENDING";
-
-                    return (
-                      <tr key={job.id || Math.random()} className="hover:bg-slate-50/50">
-                        <td className="py-4 px-4 font-medium text-slate-900">
-                          {jobTitle}
-                        </td>
-                        <td className="py-4 px-4 text-slate-600 max-w-xs truncate">
-                          {jobDesc}
-                        </td>
-                        <td className="py-4 px-4">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            jobStatus === "COMPLETED" 
-                              ? "bg-green-100 text-green-800" 
-                              : jobStatus === "IN_PROGRESS" || jobStatus === "ACCEPTED" || jobStatus === "PAID"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}>
-                            <Clock className="w-3 h-3" />
-                            {jobStatus}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 text-right space-x-2">
-                          {jobStatus === "REQUESTED" && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
+                  {jobs.map((job) => (
+                    <tr key={job.id} className="hover:bg-slate-50/50">
+                      <td className="py-4 px-4 font-medium text-slate-900">
+                        {job.service?.title ?? "Service Request"}
+                      </td>
+                      <td className="py-4 px-4 text-slate-600">
+                        {job.customer?.name ?? "N/A"}
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge className={statusColor[job.status] ?? ""} variant="secondary">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {job.status}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4 text-right space-x-2">
+                        {job.status === "REQUESTED" && (
+                          <>
+                            <Button
+                              size="sm"
                               onClick={() => handleUpdateStatus(job.id, "ACCEPTED")}
                               disabled={updatingId === job.id}
                             >
                               Accept
                             </Button>
-                          )}
-
-                          {(jobStatus === "ACCEPTED" || jobStatus === "PAID") && (
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="outline"
-                              onClick={() => handleUpdateStatus(job.id, "IN_PROGRESS")}
+                              className="border-red-300 text-red-600 hover:bg-red-50"
+                              onClick={() => handleUpdateStatus(job.id, "DECLINED")}
                               disabled={updatingId === job.id}
-                              className="border-blue-300 text-blue-600 hover:bg-blue-50"
                             >
-                              <PlayCircle className="w-4 h-4 mr-1" /> Start Job
+                              <XCircle className="w-4 h-4 mr-1" /> Decline
                             </Button>
-                          )}
+                          </>
+                        )}
 
-                          {jobStatus === "IN_PROGRESS" && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleUpdateStatus(job.id, "COMPLETED")}
-                              disabled={updatingId === job.id}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              <CheckCircle2 className="w-4 h-4 mr-1" /> Complete
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        {job.status === "ACCEPTED" && (
+                          <span className="text-xs text-muted-foreground italic">
+                            Waiting for customer payment
+                          </span>
+                        )}
+
+                        {job.status === "PAID" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleUpdateStatus(job.id, "IN_PROGRESS")}
+                            disabled={updatingId === job.id}
+                            className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                          >
+                            <PlayCircle className="w-4 h-4 mr-1" /> Start Job
+                          </Button>
+                        )}
+
+                        {job.status === "IN_PROGRESS" && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleUpdateStatus(job.id, "COMPLETED")}
+                            disabled={updatingId === job.id}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-1" /> Complete
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
