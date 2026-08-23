@@ -1,13 +1,21 @@
+"use client";
+
 import Link from "next/link";
 import { Wrench, ShieldCheck, Clock, Phone } from "lucide-react";
+import { useEffect, useState } from "react";
+import Cookies from "js-cookie";
 
 export function Footer() {
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRole(Cookies.get("userRole") ?? null);
+  }, []);
+
   return (
     <footer className="bg-slate-900 text-slate-300 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          
-          {/* Brand Col */}
           <div className="space-y-4 md:col-span-1">
             <div className="flex items-center gap-2">
               <div className="bg-blue-600 text-white p-2 rounded-lg flex items-center justify-center">
@@ -22,17 +30,23 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Quick Links */}
           <div className="space-y-3">
             <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Navigation</h4>
             <ul className="space-y-2 text-sm">
               <li><Link href="/services" className="hover:text-white transition-colors">Browse Services</Link></li>
-              <li><Link href="/dashboard/customer" className="hover:text-white transition-colors">Customer Dashboard</Link></li>
-              <li><Link href="/dashboard/technician" className="hover:text-white transition-colors">Technician Workspace</Link></li>
+              {role && (
+                <li>
+                  <Link href={`/dashboard/${role.toLowerCase()}`} className="hover:text-white transition-colors">
+                    My Dashboard
+                  </Link>
+                </li>
+              )}
+              {!role && (
+                <li><Link href="/auth/login" className="hover:text-white transition-colors">Login</Link></li>
+              )}
             </ul>
           </div>
 
-          {/* Features */}
           <div className="space-y-3">
             <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Why Choose Us</h4>
             <ul className="space-y-2 text-sm text-slate-400">
@@ -42,14 +56,12 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Contact / Info */}
           <div className="space-y-3">
             <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Service Coverage</h4>
             <p className="text-sm text-slate-400">
               Available across major metropolitan areas with secure online gateway payment tracking.
             </p>
           </div>
-
         </div>
 
         <div className="border-t border-slate-800 pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500">

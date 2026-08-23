@@ -5,30 +5,38 @@ import { usePathname, useRouter } from "next/navigation";
 import { Wrench, User, LogOut, LogIn, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import Cookies from "js-cookie";
+
+type Role = "CUSTOMER" | "TECHNICIAN" | "ADMIN" | null;
 
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [role, setRole] = useState<Role>(null);
 
-  // Check auth state on mount and route change
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    setIsAuthenticated(!!token);
+    const token = Cookies.get("accessToken");
+    const userRole = Cookies.get("userRole") as Role;
+    setRole(token && userRole ? userRole : null);
   }, [pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    setIsAuthenticated(false);
+    Cookies.remove("accessToken");
+    Cookies.remove("userRole");
+    setRole(null);
     router.push("/auth/login");
   };
+
+  const dashboardPath = role ? `/dashboard/${role.toLowerCase()}` : "/auth/login";
+  const dashboardLabel =
+    role === "CUSTOMER" ? "My Dashboard" :
+    role === "TECHNICIAN" ? "Technician Portal" :
+    role === "ADMIN" ? "Admin Panel" : "";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        
-        {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <div className="bg-blue-600 text-white p-2 rounded-lg flex items-center justify-center">
             <Wrench className="w-5 h-5" />
@@ -38,46 +46,29 @@ export function Header() {
           </span>
         </Link>
 
-        {/* Desktop Navigation - Authentication Based */}
         <nav className="hidden md:flex items-center gap-6">
-          <Link 
-            href="/services" 
+          <Link
+            href="/services"
             className={`text-sm font-medium transition-colors hover:text-blue-600 ${pathname === "/services" ? "text-blue-600" : "text-slate-600"}`}
           >
             Services
           </Link>
-          
-          {isAuthenticated ? (
-            <>
-              <Link 
-                href="/dashboard/customer" 
-                className={`text-sm font-medium transition-colors hover:text-blue-600 ${pathname?.includes("/dashboard/customer") ? "text-blue-600" : "text-slate-600"}`}
-              >
-                Customer Dashboard
-              </Link>
-              <Link 
-                href="/dashboard/technician" 
-                className={`text-sm font-medium transition-colors hover:text-blue-600 ${pathname?.includes("/dashboard/technician") ? "text-blue-600" : "text-slate-600"}`}
-              >
-                Technician Portal
-              </Link>
-            </>
-          ) : (
-            <Link 
-              href="/about" 
-              className={`text-sm font-medium transition-colors hover:text-blue-600 ${pathname === "/about" ? "text-blue-600" : "text-slate-600"}`}
+
+          {role && (
+            <Link
+              href={dashboardPath}
+              className={`text-sm font-medium transition-colors hover:text-blue-600 ${pathname?.startsWith(dashboardPath) ? "text-blue-600" : "text-slate-600"}`}
             >
-              About Us
+              {dashboardLabel}
             </Link>
           )}
         </nav>
 
-        {/* Right Actions / Auth buttons */}
         <div className="hidden md:flex items-center gap-3">
-          {isAuthenticated ? (
+          {role ? (
             <>
-              <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/customer")}>
-                <User className="w-4 h-4 mr-1 text-slate-500" /> Account
+              <Button variant="ghost" size="sm" onClick={() => router.push(dashboardPath)}>
+                <User className="w-4 h-4 mr-1 text-slate-500" /> {role.charAt(0) + role.slice(1).toLowerCase()}
               </Button>
               <Button variant="outline" size="sm" onClick={handleLogout} className="text-red-600 hover:text-red-700 hover:bg-red-50">
                 <LogOut className="w-4 h-4 mr-1" /> Logout
@@ -95,8 +86,7 @@ export function Header() {
           )}
         </div>
 
-        {/* Mobile Menu Button */}
-        <button 
+        <button
           className="md:hidden p-2 text-slate-600 hover:text-slate-900"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
@@ -104,32 +94,24 @@ export function Header() {
         </button>
       </div>
 
-      {/* Mobile Dropdown Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-b bg-white px-4 pt-2 pb-4 space-y-3">
-          <Link 
-            href="/services" 
+          <Link
+            href="/services"
             className="block text-sm font-medium text-slate-700 py-1"
             onClick={() => setMobileMenuOpen(false)}
           >
             Services
           </Link>
 
-          {isAuthenticated ? (
+          {role ? (
             <>
-              <Link 
-                href="/dashboard/customer" 
+              <Link
+                href={dashboardPath}
                 className="block text-sm font-medium text-slate-700 py-1"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Customer Dashboard
-              </Link>
-              <Link 
-                href="/dashboard/technician" 
-                className="block text-sm font-medium text-slate-700 py-1"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Technician Portal
+                {dashboardLabel}
               </Link>
               <div className="pt-2 border-t flex items-center justify-between gap-2">
                 <Button variant="outline" size="sm" onClick={handleLogout} className="text-red-600 w-full">
