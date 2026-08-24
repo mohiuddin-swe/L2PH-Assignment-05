@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User, Booking } from "@/types";
+import { User, Booking } from "../../types";
 
 const categorySchema = z.object({
   name: z.string().min(2, { message: "Category name must be at least 2 characters" }),

@@ -14,16 +14,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Plus, Pencil } from "lucide-react";
-import { Service, ServiceCategory } from "@/types";
+import { Service, ServiceCategory } from "@/app/types";
 
-const serviceSchema = z.object({
-  categoryId: z.string().min(1, { message: "Please select a category" }),
-  title: z.string().min(2, { message: "Title must be at least 2 characters" }),
+const formSchema = z.object({
+  categoryId: z.string().min(1, "Category is required"),
+  title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().optional(),
-  price: z.coerce.number().positive({ message: "Price must be greater than 0" }),
+  price: z.coerce.number().min(0, "Price must be a positive number"),
 });
 
-type ServiceFormValues = z.infer<typeof serviceSchema>;
+type ServiceFormValues = z.infer<typeof formSchema>;
 
 export default function TechnicianServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
@@ -33,10 +33,15 @@ export default function TechnicianServicesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<ServiceFormValues>({
-    resolver: zodResolver(serviceSchema),
+const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<ServiceFormValues>({
+    resolver: zodResolver(formSchema) as any,
   });
-
   const loadData = async () => {
     try {
       const [profileRes, categoriesRes] = await Promise.all([
@@ -126,17 +131,17 @@ export default function TechnicianServicesPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label>Category</Label>
-                <Select
-                  defaultValue={editingService?.categoryId}
-                  onValueChange={(val) => setValue("categoryId", val)}
-                >
-                  <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+<Select
+  defaultValue={(editingService?.categoryId as string) || ""}
+  onValueChange={(val) => setValue("categoryId", val as string)}
+>
+  <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
+  <SelectContent>
+    {categories.map((c: any) => (
+      <SelectItem key={c.id} value={c.id as string}>{c.name}</SelectItem>
+    ))}
+  </SelectContent>
+</Select>
                 {errors.categoryId && <p className="text-sm text-red-500">{errors.categoryId.message}</p>}
               </div>
 

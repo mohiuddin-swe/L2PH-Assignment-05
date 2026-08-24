@@ -21,15 +21,34 @@ const profileSchema = z.object({
   skills: z.string().optional(), // comma-separated input, split before submit
 });
 
-type ProfileFormValues = z.infer<typeof profileSchema>;
+// z.coerce.number() makes the schema's input type (string | number | unknown)
+// differ from its output type (number). useForm needs both declared separately
+// so the resolver and handleSubmit line up correctly.
+type ProfileFormInput = z.input<typeof profileSchema>;
+type ProfileFormValues = z.output<typeof profileSchema>;
+
+const DEFAULT_VALUES: ProfileFormInput = {
+  bio: "",
+  location: "",
+  experience: 0,
+  pricing: 0,
+  skills: "",
+};
 
 export default function TechnicianProfileEditPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
-  });
+const {
+  register,
+  handleSubmit,
+  reset,
+  formState: { errors },
+} = useForm<ProfileFormInput>({
+  resolver: zodResolver(profileSchema),
+  defaultValues: DEFAULT_VALUES,
+});
+
 
   useEffect(() => {
     fetchApi("/technician/profile")
@@ -43,32 +62,43 @@ export default function TechnicianProfileEditPage() {
           skills: (p.skills ?? []).join(", "),
         });
       })
-      .catch((err) => toast.error(err.message || "Could not load profile."))
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : "Could not load profile.";
+        toast.error(message);
+        // Fall back to safe defaults so required numeric fields aren't left
+        // blank/invalid before the user has even touched the form.
+        reset(DEFAULT_VALUES);
+      })
       .finally(() => setIsLoading(false));
   }, [reset]);
 
-  const onSubmit = async (data: ProfileFormValues) => {
-    setIsSaving(true);
-    try {
-      await fetchApi("/technician/profile", {
-        method: "PUT",
-        body: JSON.stringify({
-          bio: data.bio,
-          location: data.location,
-          experience: data.experience,
-          pricing: data.pricing,
-          skills: data.skills
-            ? data.skills.split(",").map((s) => s.trim()).filter(Boolean)
-            : [],
-        }),
-      });
-      toast.success("Profile updated successfully!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update profile.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+const onSubmit = async (data: ProfileFormInput) => {
+  setIsSaving(true);
+  try {
+    // profileSchema has already validated these via the resolver;
+    // parse here just to get properly-typed/coerced numbers, not raw strings
+    const parsed: ProfileFormValues = profileSchema.parse(data);
+
+    await fetchApi("/technician/profile", {
+      method: "PUT",
+      body: JSON.stringify({
+        bio: parsed.bio,
+        location: parsed.location,
+        experience: parsed.experience,
+        pricing: parsed.pricing,
+        skills: parsed.skills
+          ? parsed.skills.split(",").map((s) => s.trim()).filter(Boolean)
+          : [],
+      }),
+    });
+    toast.success("Profile updated successfully!");
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to update profile.";
+    toast.error(message);
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   if (isLoading) {
     return (
@@ -86,7 +116,7 @@ export default function TechnicianProfileEditPage() {
           <CardDescription>Update your skills, experience, and rates.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="bio">Bio</Label>
               <Textarea id="bio" {...register("bio")} placeholder="Tell customers about your experience..." />

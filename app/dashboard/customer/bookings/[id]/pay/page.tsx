@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { fetchApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Booking } from "@/types";
+import { Booking } from "@/app/types";
 
 export default function PaymentPage() {
   const router = useRouter();

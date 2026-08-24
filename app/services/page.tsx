@@ -12,7 +12,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { fetchApi } from "@/lib/api";
 import { toast } from "sonner";
-import { Service, ServiceCategory } from "@/types";
+import { Service, ServiceCategory } from "@/app/types";
 
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);

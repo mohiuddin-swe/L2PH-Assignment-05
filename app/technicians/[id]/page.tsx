@@ -12,7 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { TechnicianProfile, Service } from "@/types";
+import { TechnicianProfile, Service } from "@/app/types";
 
 const availableTimeSlots = ["09:00 AM", "11:30 AM", "02:00 PM", "04:30 PM"];
 
@@ -100,7 +100,7 @@ export default function TechnicianProfilePage() {
   }
 
   const selectedServiceObj: Service | undefined =
-    technician.services?.find((s) => s.id === selectedServiceId) ?? technician.services?.[0];
+   technician.services?.find((s: any) => s.id === selectedServiceId) ?? technician.services?.[0];
   const displayPrice = selectedServiceObj?.price ?? technician.pricing;
 
   return (
@@ -142,7 +142,7 @@ export default function TechnicianProfilePage() {
             <div className="pt-2">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">Skills & Expertise</h3>
               <div className="flex flex-wrap gap-2">
-                {technician.skills?.map((skill) => (
+                {technician.skills?.map((skill: string) => (
                   <Badge key={skill} variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
                     <CheckCircle className="w-3 h-3 mr-1" />
                     {skill}
@@ -155,7 +155,7 @@ export default function TechnicianProfilePage() {
           <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
             <h2 className="text-xl font-bold text-slate-900 border-b pb-2">Services Offered</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {technician.services?.map((srv) => (
+              {technician.services?.map((srv: any) => (
                 <div
                   key={srv.id}
                   onClick={() => setSelectedServiceId(srv.id)}
@@ -179,7 +179,7 @@ export default function TechnicianProfilePage() {
               <p className="text-sm text-slate-500">No reviews yet.</p>
             ) : (
               <div className="space-y-4 divide-y">
-                {technician.reviews.map((rev) => (
+                {technician.reviews.map((rev: any) => (
                   <div key={rev.id} className="pt-3 first:pt-0">
                     <span className="font-semibold text-sm text-slate-900">{rev.customer?.name ?? "Client"}</span>
                     <div className="flex items-center gap-1 text-amber-500 my-1">
@@ -227,14 +227,13 @@ export default function TechnicianProfilePage() {
                       {date ? format(date, "PPP") : <span>Pick a date</span>}
                     </div>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-50 bg-white shadow-xl border rounded-lg" align="start" side="bottom">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={setDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
+                <PopoverContent className="w-auto p-0 z-50 bg-white shadow-xl border rounded-lg">
+  <Calendar
+    mode="single"
+    selected={date}
+    onSelect={setDate}
+  />
+</PopoverContent>
                 </Popover>
               </div>
 

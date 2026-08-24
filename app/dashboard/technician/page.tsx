@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, Clock, Wrench, PlayCircle, XCircle } from "lucide-react";
-import { Booking } from "@/types";
+import { Booking } from "@/app/types";
 
 const statusColor: Record<string, string> = {
   REQUESTED: "bg-amber-100 text-amber-800",

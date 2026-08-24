@@ -12,17 +12,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Trash2, Plus } from "lucide-react";
-import { AvailabilitySlot } from "@/types";
+import { AvailabilitySlot } from "../../../types";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-const slotSchema = z.object({
+const formSchema = z.object({
   dayOfWeek: z.coerce.number().min(0).max(6),
-  startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: "Use HH:MM format" }),
-  endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: "Use HH:MM format" }),
+  startTime: z.string(),
+  endTime: z.string(),
 });
 
-type SlotFormValues = z.infer<typeof slotSchema>;
+type SlotFormValues = z.infer<typeof formSchema>;
 
 export default function AvailabilityPage() {
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
@@ -30,10 +30,16 @@ export default function AvailabilityPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm<SlotFormValues>({
-    resolver: zodResolver(slotSchema),
-    defaultValues: { dayOfWeek: 1, startTime: "09:00", endTime: "17:00" },
+const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<SlotFormValues>({
+    resolver: zodResolver(formSchema) as any,
   });
+
 
   const loadSlots = async () => {
     try {

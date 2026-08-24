@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Booking } from "@/types";
+import { Booking } from "@/app/types";
 
 const CANCELLABLE = ["REQUESTED", "ACCEPTED", "PAID"];
 
