@@ -95,3 +95,12 @@ export interface ApiResponse<T> {
   data: T;
   errorDetails?: Record<string, string[]> | null;
 }
+
+export interface AvailabilitySlot {
+  id: string;
+  technicianProfileId: string;
+  dayOfWeek: number; // 0=Sun, 1=Mon, ... 6=Sat
+  startTime: string; // "HH:MM"
+  endTime: string;
+  isBooked: boolean;
+}
