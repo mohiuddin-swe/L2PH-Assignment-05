@@ -194,7 +194,7 @@ export default function TechnicianProfilePage() {
         </div>
 
         <div>
-          <Card className="sticky top-24 border-slate-200 shadow-xl">
+          <Card className="sticky top-24 border-slate-200 shadow-xl overflow-visible">
             <CardHeader className="bg-slate-50 border-b pb-6">
               <CardTitle className="text-xl">Book Appointment</CardTitle>
               <CardDescription>Select a service, date, and time slot.</CardDescription>
@@ -202,7 +202,7 @@ export default function TechnicianProfilePage() {
                 ৳{displayPrice} <span className="text-sm font-normal text-slate-500">service fee</span>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 space-y-6">
+            <CardContent className="pt-6 space-y-6 overflow-visible">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-900">Selected Service</label>
                 <div className="p-3 bg-slate-50 rounded-lg border text-sm font-medium text-slate-800">
@@ -210,10 +210,10 @@ export default function TechnicianProfilePage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 relative">
                 <label className="text-sm font-medium text-slate-900">Select Date</label>
                 <Popover>
-                  <PopoverTrigger>
+                  <PopoverTrigger asChild>
                     <div
                       role="button"
                       tabIndex={0}
@@ -227,12 +227,11 @@ export default function TechnicianProfilePage() {
                       {date ? format(date, "PPP") : <span>Pick a date</span>}
                     </div>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 z-50 bg-white shadow-xl border rounded-lg" align="start" side="bottom">
                     <Calendar
                       mode="single"
                       selected={date}
                       onSelect={setDate}
-                      disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
                       initialFocus
                     />
                   </PopoverContent>

@@ -9,6 +9,13 @@ import Cookies from "js-cookie";
 
 type Role = "CUSTOMER" | "TECHNICIAN" | "ADMIN" | null;
 
+const technicianSubNav = [
+  { href: "/dashboard/technician", label: "Jobs" },
+  { href: "/dashboard/technician/profile", label: "Profile" },
+  { href: "/dashboard/technician/services", label: "My Service" },
+  { href: "/dashboard/technician/availability", label: "Availability" },
+];
+
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
@@ -51,10 +58,10 @@ export function Header() {
             href="/services"
             className={`text-sm font-medium transition-colors hover:text-blue-600 ${pathname === "/services" ? "text-blue-600" : "text-slate-600"}`}
           >
-            Services
+            All Services
           </Link>
 
-          {role && (
+          {role && role !== "TECHNICIAN" && (
             <Link
               href={dashboardPath}
               className={`text-sm font-medium transition-colors hover:text-blue-600 ${pathname?.startsWith(dashboardPath) ? "text-blue-600" : "text-slate-600"}`}
@@ -62,6 +69,23 @@ export function Header() {
               {dashboardLabel}
             </Link>
           )}
+
+          {role === "TECHNICIAN" &&
+            technicianSubNav.map((item) => {
+              const isActive =
+                item.href === "/dashboard/technician"
+                  ? pathname === "/dashboard/technician"
+                  : pathname?.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`text-sm font-medium transition-colors hover:text-blue-600 ${isActive ? "text-blue-600" : "text-slate-600"}`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
@@ -104,21 +128,34 @@ export function Header() {
             Services
           </Link>
 
-          {role ? (
-            <>
+          {role && role !== "TECHNICIAN" && (
+            <Link
+              href={dashboardPath}
+              className="block text-sm font-medium text-slate-700 py-1"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {dashboardLabel}
+            </Link>
+          )}
+
+          {role === "TECHNICIAN" &&
+            technicianSubNav.map((item) => (
               <Link
-                href={dashboardPath}
+                key={item.href}
+                href={item.href}
                 className="block text-sm font-medium text-slate-700 py-1"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                {dashboardLabel}
+                {item.label}
               </Link>
-              <div className="pt-2 border-t flex items-center justify-between gap-2">
-                <Button variant="outline" size="sm" onClick={handleLogout} className="text-red-600 w-full">
-                  <LogOut className="w-4 h-4 mr-1" /> Logout
-                </Button>
-              </div>
-            </>
+            ))}
+
+          {role ? (
+            <div className="pt-2 border-t flex items-center justify-between gap-2">
+              <Button variant="outline" size="sm" onClick={handleLogout} className="text-red-600 w-full">
+                <LogOut className="w-4 h-4 mr-1" /> Logout
+              </Button>
+            </div>
           ) : (
             <div className="pt-2 border-t flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => { router.push("/auth/login"); setMobileMenuOpen(false); }} className="w-full">
